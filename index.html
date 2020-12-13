@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Font Loader</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600;1,700;1,800&display=swap" rel="stylesheet">
+    <script src="https://bundle.run/pixelmatch"></script>
+    <style>
+        .text {
+            display: none;
+            font-family: 'Open Sans';
+        }
+
+        @keyframes fadeIn {
+          0% { opacity: 0; }
+          100% { opacity: 1; }
+        }
+
+        .font-loaded .text {
+            display: block;
+            animation: fadeIn ease-in-out .2s
+        }
+
+        .text.italic {
+            font-style: italic;
+        }
+        .text.bold {
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+<div>Test Default</div>
+<div class="text">Test Open Sans</div>
+<div class="text italic">Test Open Sans Italic</div>
+<div class="text bold">Test Open Sans Bold</div>
+
+<br><br>
+<div>Actual/Expected/Diff</div>
+<script>
+
+async function waitForFontLoad(
+  font,
+  timeout = 2000,
+  interval = 100
+) {
+  return new Promise((resolve, reject) => {
+    // repeatedly poll check
+    const poller = setInterval(async () => {
+      try {
+        await document.fonts.load(font);
+      } catch (err) {
+        reject(err);
+      }
+      try {
+        if (document.fonts.check(font)) {
+          clearInterval(poller);
+          resolve(true);
+        }
+      } catch {
+        // pass
+      }
+    }, interval);
+    setTimeout(() => clearInterval(poller), timeout);
+  });
+}
+
+async function loadImageData(path) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  const img = new Image();
+  img.src = path;
+  await img.decode();
+
+  canvas.width = img.width;
+  canvas.height = img.height;
+
+  ctx.drawImage(img, 0, 0);
+  return ctx.getImageData(0, 0, img.width, img.height);
+}
+
+async function main() {
+    await document.fonts.load('18px Open Sans');
+    await document.fonts.load('bold 18px Open Sans');
+    await document.fonts.load('italic 18px Open Sans');
+    document.body.classList.add('font-loaded');
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 200;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+
+    ctx.font = '18px Open Sans';
+    ctx.fillText('Some Text', 50, 50);
+
+    actual = await ctx.getImageData(0, 0, 200, 200);
+    expected = await loadImageData('./some-text-2.png');
+
+    ctx.putImageData(expected, 200, 0);
+
+    const diffCanvas = document.createElement('canvas');
+    diffCanvas.width = 200;
+    diffCanvas.height = 200;
+    const diffCtx = diffCanvas.getContext('2d');
+    document.body.appendChild(diffCanvas);
+
+    const diff = diffCtx.createImageData(200, 200);
+    const results = pixelmatch(actual.data, expected.data, diff.data, 200, 200, { threshold: 0.1 })
+    diffCtx.putImageData(diff, 0, 0);
+}
+
+main();
+</script>
+</body>
+</html>
