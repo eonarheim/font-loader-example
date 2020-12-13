@@ -83,10 +83,28 @@ async function loadImageData(path) {
   return ctx.getImageData(0, 0, img.width, img.height);
 }
 
+async function waitForFontLoad(font, timeout = 2000, interval = 100) {
+  return new Promise((resolve, reject) => {
+    // repeatedly poll check
+    const poller = setInterval(async () => {
+      try {
+        await document.fonts.load(font);
+      } catch (err) {
+        reject(err);
+      }
+      if (document.fonts.check(font)) {
+        clearInterval(poller);
+        resolve(true);
+      }
+    }, interval);
+    setTimeout(() => clearInterval(poller), timeout);
+  });
+}
+
 async function main() {
-    await document.fonts.load('18px Open Sans');
-    await document.fonts.load('bold 18px Open Sans');
-    await document.fonts.load('italic 18px Open Sans');
+    await waitForFontLoad('18px Open Sans');
+    await waitForFontLoad('bold 18px Open Sans');
+    await waitForFontLoad('italic 18px Open Sans');
     document.body.classList.add('font-loaded');
 
     const canvas = document.createElement('canvas');
